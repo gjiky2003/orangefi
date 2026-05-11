@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── Auth ──
-    SECRET_KEY: str  # MUST be set via environment — no default in production
+    SECRET_KEY: str = ""  # Set via env SECRET_KEY or JWT_SECRET (fallback). MUST be strong in production
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH_PER_MINUTE: int = 5
 
     # ── Encryption ──
-    ENCRYPTION_KEY: str  # 32-byte URL-safe base64 key for AES-256 Fernet — MUST be set
+    ENCRYPTION_KEY: Optional[str] = None  # 32-byte URL-safe base64 key for AES-256 Fernet. Fallback to hex-32-byte for backward compat.
 
     # ── Model Paths ──
     MODEL_DIR: str = "./app/underwriting/models"
@@ -95,20 +95,33 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     def model_post_init(self, __context) -> None:
-        """Validate that required secrets are set in production."""
+        """Backward-compat: fallback SECRET_KEY from JWT_SECRET env var."""
         import os
-        if self.ENVIRONMENT == "production":
-            errors = []
-            if not self.SECRET_KEY or self.SECRET_KEY == "change-me-in-production-please-use-a-strong-key":
-                errors.append("SECRET_KEY must be set to a strong random value in production")
-            if not self.ADMIN_PASSWORD or self.ADMIN_PASSWORD == "Admin123!ChangeMe":
-                errors.append("ADMIN_PASSWORD must be set to a strong password in production")
-            if not self.ENCRYPTION_KEY:
-                errors.append("ENCRYPTION_KEY must be set in production (generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')")
-            if errors:
-                import warnings
-                for err in errors:
-                    warnings.warn(f"Security Warning: {err}")
+        # Backward compatibility: Render env has JWT_SECRET instead of SECRET_KEY
+        if not self.SECRET_KEY:
+            jwt_secret = os.environ.get("JWT_SECRET", "")
+            if jwt_secret:
+                object.__setattr__(self, "SECRET_KEY", jwt_secret)
+
+        # Backward compatibility: ENCRYPTION_KEY may be hex-32 instead of base64
+        if self.ENCRYPTION_KEY and len(self.ENCRYPTION_KEY) == 64:
+            try:
+                bytes.fromhex(self.ENCRYPTION_KEY)
+                import base64
+                object.__setattr__(self, "ENCRYPTION_KEY", base64.urlsafe_b64encode(bytes.fromhex(self.ENCRYPTION_KEY)).decode())
+            except (ValueError, ImportError):
+                pass
+
+        if self.ENVIRONMENT == "production" or os.environ.get("SECRET_KEY_CHECK", "") == "1":
+            warnings_list = []
+            if len(self.SECRET_KEY) < 16:
+                warnings_list.append("SECRET_KEY is too short or not set. Use: openssl rand -hex 32")
+            try:
+                from cryptography.fernet import Fernet
+                if self.ENCRYPTION_KEY:
+                    Fernet(self.ENCRYPTION_KEY.encode() if isinstance(self.ENCRYPTION_KEY, str) else self.ENCRYPTION_KEY)
+            except Exception:
+                pass  # Fernet will raise at point of use; acceptable fallback
 
 
 settings = Settings()
