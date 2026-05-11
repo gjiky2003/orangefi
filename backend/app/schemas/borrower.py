@@ -267,6 +267,18 @@ class BorrowerLogin(BaseModel):
         examples=["securePassword123!"],
     )
 
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Enforce password strength server-side."""
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one number")
+        return v
+
 
 class BorrowerLoginResponse(BaseModel):
     """Response returned on successful borrower login."""

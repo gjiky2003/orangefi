@@ -206,6 +206,32 @@ class Borrower(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     last_name: Mapped[str] = mapped_column(String(128), nullable=False)
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
 
+    # ── Authentication ──
+    hashed_password: Mapped[Optional[str]] = mapped_column(
+        String(256), nullable=True, default=None
+    )
+    login_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    is_locked: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    locked_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_login_ip: Mapped[Optional[str]] = mapped_column(
+        String(45), nullable=True
+    )
+    mfa_secret: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True
+    )
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+
     # ── Encrypted PII (AES-256 at application level) ──
     ssn_encrypted: Mapped[Optional[bytes]] = mapped_column(
         LargeBinary, nullable=True

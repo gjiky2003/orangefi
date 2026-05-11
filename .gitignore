@@ -91,3 +91,4 @@ tmp/
 temp/
 upload/
 downloads/
+.github/workflows/

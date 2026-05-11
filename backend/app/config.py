@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
 
     # ── Auth ──
-    SECRET_KEY: str = "change-me-in-production-please-use-a-strong-key"
+    SECRET_KEY: str  # MUST be set via environment — no default in production
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # ── Admin ──
     ADMIN_EMAIL: str = "admin@orangefi.com"
-    ADMIN_PASSWORD: str = "Admin123!ChangeMe"
+    ADMIN_PASSWORD: str  # MUST be set via environment — no default in production
 
     # ── Plaid ──
     PLAID_CLIENT_ID: Optional[str] = None
@@ -79,13 +79,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_AUTH_PER_MINUTE: int = 5
 
     # ── Encryption ──
-    ENCRYPTION_KEY: Optional[str] = None  # 32-byte key for AES-256
+    ENCRYPTION_KEY: str  # 32-byte URL-safe base64 key for AES-256 Fernet — MUST be set
 
     # ── Model Paths ──
     MODEL_DIR: str = "./app/underwriting/models"
 
     # ── CORS ──
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8000,https://orangefi-frontend.onrender.com,https://orangefi.com,https://www.orangefi.com"
 
     # ── Sentry ──
     SENTRY_DSN: Optional[str] = None
@@ -93,6 +93,22 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+
+    def model_post_init(self, __context) -> None:
+        """Validate that required secrets are set in production."""
+        import os
+        if self.ENVIRONMENT == "production":
+            errors = []
+            if not self.SECRET_KEY or self.SECRET_KEY == "change-me-in-production-please-use-a-strong-key":
+                errors.append("SECRET_KEY must be set to a strong random value in production")
+            if not self.ADMIN_PASSWORD or self.ADMIN_PASSWORD == "Admin123!ChangeMe":
+                errors.append("ADMIN_PASSWORD must be set to a strong password in production")
+            if not self.ENCRYPTION_KEY:
+                errors.append("ENCRYPTION_KEY must be set in production (generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')")
+            if errors:
+                import warnings
+                for err in errors:
+                    warnings.warn(f"Security Warning: {err}")
 
 
 settings = Settings()

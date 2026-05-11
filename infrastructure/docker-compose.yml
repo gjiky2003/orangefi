@@ -113,8 +113,8 @@ services:
       APP_NAME: OrangeFi
       ENVIRONMENT: development
       DEBUG: "true"
-      SECRET_KEY: dev-secret-key-change-in-prod
-      CORS_ORIGINS: "http://localhost:3000,http://localhost:8000"
+      SECRET_KEY: \${SECRET_KEY:-dev-secret-not-for-production}
+      CORS_ORIGINS: "\${CORS_ORIGINS:-http://localhost:3000,http://localhost:8000}"
 
       # ── Database ──
       DATABASE_URL: "postgresql+asyncpg://orangefi:orangefi@postgres:5432/orangefi"
@@ -135,10 +135,10 @@ services:
 
       # ── Default Admin ──
       ADMIN_EMAIL: admin@orangefi.com
-      ADMIN_PASSWORD: Admin123!
+      ADMIN_PASSWORD: \${ADMIN_PASSWORD:-}
 
       # ── Encryption ──
-      ENCRYPTION_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      ENCRYPTION_KEY: "\${ENCRYPTION_KEY:-}"
 
       # ── Rate Limiting ──
       RATE_LIMIT_PER_MINUTE: "120"

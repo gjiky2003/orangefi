@@ -162,27 +162,8 @@ async def register_borrower(
             detail="A borrower with this phone number already exists",
         )
 
-    # Hash the SSN first — we use it as the password hash for MVP simplicity
-    # In production, we'd have a separate password field on the model
-    # For now, we store hashed SSN as the "password" equivalent
-    # Actually, the Borrower model doesn't have a password field — let's check...
-    # We'll use a workaround: store password hash in a field. The model has ssn_encrypted.
-    # We need to add password to the borrower or handle differently.
-    # For MVP, we generate a random token and store it in ssn_encrypted as the "password"
-    # Better approach: the model doesn't have a password field, so we'll create
-    # a separate borrower_auth concept. But for MVP, let's just generate tokens.
-    # Actually, the cleaner approach is to just create the borrower and return tokens
-    # without password (the user can set password later via separate flow).
-    # But the task says "validate email, hash password, return JWT"
-    # The Borrower model doesn't have hashed_password... Let's just go with it.
-    # For a real implementation, we'd add a hashed_password column. For this router,
-    # we'll use the ssn_encrypted field to store a hash of the password creatively,
-    # but that's bad practice. Let's just create the borrower and generate tokens.
-    # Since the model doesn't have password, we'll handle it pragmatically:
-    # use phone + email as auth, or store password hash in application metadata.
-    # Best: we just create without password storage for now and note it.
-    # The login will verify by email lookup + external auth.
-    # For MVP, we'll skip the actual password storage and just create + return tokens.
+    # Hash the password using bcrypt
+    hashed_pw = hash_password(payload.password)
 
     now = datetime.now(timezone.utc)
 
@@ -204,6 +185,7 @@ async def register_borrower(
         monthly_income=payload.monthly_income,
         agreed_to_tos_at=now if payload.agreed_to_tos else None,
         agreed_to_privacy_at=now if payload.agreed_to_privacy else None,
+        hashed_password=hashed_pw,
     )
     db.add(borrower)
     await db.flush()
@@ -255,7 +237,7 @@ async def login_borrower(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> BorrowerLoginResponse:
-    """Authenticate a borrower by email and return access + refresh tokens."""
+    """Authenticate a borrower by email and verify password + rate limit."""
     result = await db.execute(
         select(Borrower).where(
             Borrower.email == payload.email,
@@ -264,17 +246,40 @@ async def login_borrower(
         )
     )
     borrower = result.scalar_one_or_none()
-    if not borrower:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
 
-    # For MVP: password validation is a hash of the password against stored hash.
-    # Since the model doesn't have a password field, we use the ssn_encrypted field
-    # as a proxy. In production, add a proper hashed_password column.
-    # For now, any non-empty password succeeds if the borrower exists.
-    # (This is an MVP limitation — real implementation would verify password)
+    # Generic response to prevent email enumeration
+    auth_failed_response = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+    )
+
+    if not borrower:
+        raise auth_failed_response
+
+    # Check account lockout
+    if borrower.is_locked:
+        if borrower.locked_until and borrower.locked_until > datetime.now(timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=f"Account locked until {borrower.locked_until.isoformat()}. Try again later.",
+            )
+        # Auto-unlock
+        borrower.is_locked = False
+        borrower.login_attempts = 0
+
+    # Verify password
+    if not borrower.hashed_password or not verify_password(payload.password, borrower.hashed_password):
+        borrower.login_attempts = (borrower.login_attempts or 0) + 1
+        if borrower.login_attempts >= 5:
+            borrower.is_locked = True
+            borrower.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+        await db.flush()
+        raise auth_failed_response
+
+    # Reset login attempts on success
+    borrower.login_attempts = 0
+    borrower.last_login_at = datetime.now(timezone.utc)
+    borrower.last_login_ip = request.client.host if request.client else None
 
     # Create audit log
     await create_audit_log(
@@ -1298,8 +1303,11 @@ async def upload_document(
                 detail="Application not found or does not belong to you",
             )
 
-    import hashlib
-    file_key = f"borrowers/{borrower.id}/{uuid.uuid4()}/{file_name}"
+    from werkzeug.utils import secure_filename
+    
+    # Sanitize the filename to prevent path traversal
+    safe_name = secure_filename(file_name) or f"document_{uuid.uuid4().hex[:8]}"
+    file_key = f"borrowers/{borrower.id}/{uuid.uuid4()}/{safe_name}"
 
     doc = Document(
         borrower_id=borrower.id,
