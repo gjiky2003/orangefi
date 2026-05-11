@@ -128,13 +128,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Initialise Sentry
     _init_sentry()
 
-    # Initialise database tables (dev only — use Alembic in production)
-    if settings.ENVIRONMENT in ("development", "staging"):
-        try:
-            await init_db()
-            logger.info("Database tables created via Base.metadata.create_all")
-        except Exception as exc:
-            logger.warning("Database table creation failed (may already exist): %s", exc)
+    # Initialise database tables (safe: CREATE TABLE IF NOT EXISTS — idempotent)
+    try:
+        await init_db()
+        logger.info("Database tables initialised via Base.metadata.create_all")
+    except Exception as exc:
+        logger.warning("Database table initialisation note: %s", exc)
 
     # Ensure default admin user exists
     try:
