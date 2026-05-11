@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import async_session_factory, init_db
+from app.database import async_session_factory, init_db, engine
 from app.models import AdminRole, AdminUser
 from app.routers import admin_router, borrower_router, health_router, integrations_router, underwriting_router
 from app.utils.rate_limit import get_rate_limiter
@@ -141,6 +141,36 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as exc:
         logger.error("Failed to create default admin user: %s", exc)
 
+    # Verify critical table exists; retry init_db if missing
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(__import__("sqlalchemy").text("SELECT 1 FROM admin_users LIMIT 1"))
+        logger.info("admin_users table verified")
+    except Exception:
+        logger.warning("admin_users table missing — re-running init_db")
+        try:
+            await init_db()
+            from app.models import AdminUser
+            from app.utils.security import hash_password
+            async with async_session_factory() as session:
+                result = await session.execute(
+                    __import__("sqlalchemy").select(AdminUser).where(AdminUser.email == settings.ADMIN_EMAIL)
+                )
+                existing = result.scalar_one_or_none()
+                if not existing:
+                    admin = AdminUser(
+                        email=settings.ADMIN_EMAIL,
+                        display_name="System Administrator",
+                        hashed_password=hash_password(settings.ADMIN_PASSWORD),
+                        role=__import__("app.models", fromlist=["AdminRole"]).AdminRole.super_admin,
+                        is_active=True,
+                    )
+                    session.add(admin)
+                    await session.commit()
+                    logger.info("Default admin user created after table init")
+        except Exception as e:
+            logger.error("Table init retry failed: %s", e)
+    
     logger.info("%s is ready", settings.APP_NAME)
 
     yield  # ── Application runs here ──
@@ -439,6 +469,21 @@ def create_app() -> FastAPI:
     async def _metrics(request: Request) -> Response:
         """Prometheus metrics endpoint."""
         return await metrics_endpoint(request)
+
+    @app.post("/api/init-db", tags=["infrastructure"])
+    async def _init_db(request: Request) -> JSONResponse:
+        """Force database table initialisation (admin-only, one-time)."""
+        from app.utils.dependencies import get_current_admin
+        try:
+            admin = await get_current_admin(request)
+        except Exception:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=403, content={"detail": "Admin auth required"})
+        try:
+            await init_db()
+            return JSONResponse(content={"status": "ok", "message": "Tables initialised"})
+        except Exception as exc:
+            return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
 
     return app
 
