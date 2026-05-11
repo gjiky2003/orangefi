@@ -1,15 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/src/lib/auth-context';
 import { getApiErrorMessage } from '@/src/lib/api';
 import { Eye, EyeOff, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
-
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -28,7 +26,7 @@ export default function LoginPage() {
     if (!email.trim()) {
       errors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      errors.email = 'Please enter a valid email';
+      errors.email = 'Please enter a valid email address';
     }
     if (!password) errors.password = 'Password is required';
     setFieldErrors(errors);
@@ -38,10 +36,8 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     setLoading(true);
     setError(null);
-
     try {
       await login(email, password);
       router.push(redirect);
@@ -54,7 +50,6 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-orange-600 to-orange-900 p-12 flex-col justify-between">
         <div>
           <Link href="/" className="flex items-center gap-2 mb-12">
@@ -64,25 +59,28 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-white">OrangeFi</span>
           </Link>
           <div className="max-w-sm">
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Welcome back to OrangeFi
-            </h2>
+            <h2 className="text-3xl font-bold text-white mb-4">Welcome back</h2>
             <p className="text-orange-100 text-lg">
-              Access your dashboard, manage your loans, and track your financial progress.
+              Sign in to manage your loans, check your rate, and track your payments.
             </p>
           </div>
         </div>
-        <div className="space-y-4">
-          <div className="bg-white/10 rounded-xl p-5">
-            <p className="text-white font-medium mb-1">Member since this session?</p>
-            <p className="text-orange-200 text-sm">
-              Track your applications, make payments, and view loan details all in one place.
-            </p>
-          </div>
+        <div className="space-y-6">
+          {[
+            { text: 'View your personalized dashboard' },
+            { text: 'Manage payments and autopay' },
+            { text: 'Track your credit progress' },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 text-orange-100">
+              <div className="w-5 h-5 rounded-full bg-orange-400/20 flex items-center justify-center">
+                <ArrowRight className="w-3 h-3" />
+              </div>
+              <span>{item.text}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Right panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
@@ -92,27 +90,24 @@ export default function LoginPage() {
               </div>
               <span className="text-xl font-bold text-gray-900">OrangeFi</span>
             </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Sign in to OrangeFi</h1>
             <p className="text-gray-600 mt-2">
               Don&apos;t have an account?{' '}
               <Link href="/register" className="text-orange-600 hover:text-orange-700 font-medium">
-                Get started
+                Create one
               </Link>
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
+                Email Address <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
                 value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: '' }));
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 className={`w-full px-3 py-2.5 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-shadow ${
                   fieldErrors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
                 }`}
@@ -125,16 +120,13 @@ export default function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
+                Password <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: '' }));
-                  }}
+                  onChange={(e) => setPassword(e.target.value)}
                   className={`w-full px-3 py-2.5 pr-10 border rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-shadow ${
                     fieldErrors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
                   }`}
@@ -174,15 +166,17 @@ export default function LoginPage() {
                 </>
               )}
             </button>
-
-            <p className="text-xs text-gray-500 text-center pt-2">
-              By signing in, you agree to our{' '}
-              <span className="text-orange-600 hover:underline cursor-pointer">Terms</span> and{' '}
-              <span className="text-orange-600 hover:underline cursor-pointer">Privacy Policy</span>.
-            </p>
           </form>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-600" /></div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
