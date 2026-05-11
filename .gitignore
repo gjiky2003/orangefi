@@ -1,0 +1,93 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# OrangeFi — .gitignore
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+*.egg-info
+
+# ── Virtual Environments ───────────────────────────────────────────────────
+.venv/
+venv/
+env/
+virtualenv/
+
+# ── Testing & Coverage ─────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+.hypothesis/
+.tox/
+
+# ── Jupyter ────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── Environment / Secrets ──────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.cert
+
+# ── IDE / Editor ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ── Node / JavaScript ──────────────────────────────────────────────────────
+node_modules/
+.next/
+*.tsbuildinfo
+next-env.d.ts
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+*.log
+logs/
+log/
+
+# ── Terraform ──────────────────────────────────────────────────────────────
+terraform/.terraform/
+*.tfstate
+*.tfstate.*
+terraform/terraform.tfvars
+
+# ── Docker ─────────────────────────────────────────────────────────────────
+.docker/
+
+# ── Databases ──────────────────────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+
+# ── OS Files ───────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── ML Models ──────────────────────────────────────────────────────────────
+*.pkl
+*.h5
+*.joblib
+model_cache/
+
+# ── Temporary ──────────────────────────────────────────────────────────────
+tmp/
+temp/
+upload/
+downloads/
