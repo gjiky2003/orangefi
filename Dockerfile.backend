@@ -1,5 +1,5 @@
-# Render-compatible Dockerfile for OrangeFi Backend
-# Builds from repo root so context contains all files
+# OrangeFi Backend — Dockerfile for Render (repo-root context)
+# Uses system pip (not --user) so binaries are accessible
 FROM python:3.12-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,10 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Copy from backend/ subdirectory (repo-root context)
 COPY backend/requirements.txt .
-RUN pip install --user --no-cache-dir --upgrade pip && \
-    pip install --user --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 FROM python:3.12-slim
 
@@ -19,15 +18,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-COPY --from=builder /root/.local /root/.local
-ENV PATH=/root/.local/bin:$PATH
-
-# Copy entire backend directory
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 COPY backend/ .
 
+# Create non-root user but keep permissions on binaries
 RUN groupadd -r orangefi && useradd -r -g orangefi -d /app -s /sbin/nologin orangefi && \
     chown -R orangefi:orangefi /app
 
+# Run as non-root for better security
 USER orangefi
 
 EXPOSE 8000
