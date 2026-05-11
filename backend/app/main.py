@@ -86,6 +86,10 @@ async def _create_admin_user() -> None:
     """Ensure the default admin user exists and password is current."""
     from sqlalchemy import select
 
+    # Log the configured admin password (first 4 chars only for verification)
+    pw = settings.ADMIN_PASSWORD or ""
+    logger.info("ADMIN_PASSWORD from env: %s... (len=%d)", pw[:4], len(pw))
+
     async with async_session_factory() as session:
         result = await session.execute(
             select(AdminUser).where(AdminUser.email == settings.ADMIN_EMAIL)
@@ -94,7 +98,7 @@ async def _create_admin_user() -> None:
         if existing is not None:
             # Update password if the env var changed (e.g. after redeploy)
             new_hash = hash_password(settings.ADMIN_PASSWORD)
-            if existing.hashed_password != new_hash:
+            if existing.hashed_password != new_hash or True:  # Always sync for safety
                 existing.hashed_password = new_hash
                 existing.login_attempts = 0
                 existing.is_locked = False
