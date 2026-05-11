@@ -7,10 +7,10 @@ import type { PaginatedResponse, ApplicationListItem, ApplicationDetail, LoanLis
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://orangefi-backend.onrender.com/api/v1';
 
 const ADMIN_TOKEN_KEY = 'orangefi_admin_token';
-const ADMIN_REFRESH_KEY = 'orangefri_admin_refresh';
+const ADMIN_REFRESH_KEY = 'orangefi_admin_refresh';
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 

@@ -50,7 +50,10 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     }
   }, [loading, isAuthenticated, router, pathname]);
 
-  if (loading) {
+  // Allow the login page to render even when not authenticated
+  const isLoginPage = pathname === '/admin/login';
+
+  if (loading && !isLoginPage) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -61,7 +64,7 @@ function AdminAuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !isLoginPage) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
