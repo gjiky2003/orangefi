@@ -80,7 +80,19 @@ async def _create_admin_user() -> None:
         )
         existing = result.scalar_one_or_none()
         if existing is not None:
-            logger.info("Default admin user already exists: %s", settings.ADMIN_EMAIL)
+            # Always update the password to match current env var
+            new_hash = hash_password(settings.ADMIN_PASSWORD)
+            if existing.hashed_password != new_hash:
+                existing.hashed_password = new_hash
+                existing.is_locked = False
+                existing.login_attempts = 0
+                await session.flush()
+                logger.info(
+                    "Admin password updated for %s",
+                    settings.ADMIN_EMAIL,
+                )
+            else:
+                logger.info("Default admin user already exists: %s", settings.ADMIN_EMAIL)
             return
 
         admin = AdminUser(
