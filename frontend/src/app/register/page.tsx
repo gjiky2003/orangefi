@@ -7,6 +7,8 @@ import { useAuth } from '@/src/lib/auth-context';
 import { getApiErrorMessage } from '@/src/lib/api';
 import { Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 const PASSWORD_RULES = [
   { label: 'At least 8 characters', test: (v: string) => v.length >= 8 },
   { label: 'One uppercase letter', test: (v: string) => /[A-Z]/.test(v) },

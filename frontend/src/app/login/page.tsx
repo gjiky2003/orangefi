@@ -7,6 +7,8 @@ import { useAuth } from '@/src/lib/auth-context';
 import { getApiErrorMessage } from '@/src/lib/api';
 import { Eye, EyeOff, AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();

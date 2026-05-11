@@ -12,12 +12,18 @@ COPY frontend/tsconfig.json frontend/next.config.js frontend/postcss.config.js f
 COPY frontend/src/ ./src/
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=https://orangefi-backend.onrender.com/api/v1
+ENV NEXT_PUBLIC_APP_NAME=OrangeFi
+ENV NEXT_PUBLIC_ENVIRONMENT=production
 RUN npm run build
 
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=https://orangefi-backend.onrender.com/api/v1
+ENV NEXT_PUBLIC_APP_NAME=OrangeFi
+ENV NEXT_PUBLIC_ENVIRONMENT=production
 
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
