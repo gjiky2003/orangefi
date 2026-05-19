@@ -22,7 +22,7 @@ from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import async_session_factory, init_db, engine
 from app.models import AdminRole, AdminUser
-from app.routers import admin_router, borrower_router, health_router, integrations_router, underwriting_router
+from app.routers import admin_router, borrower_router, health_router, integrations_router, underwriting_router, servicing_router, compliance_router, agent_router
 from app.utils.rate_limit import get_rate_limiter
 from app.utils.security import hash_password
 
@@ -469,7 +469,10 @@ def create_app() -> FastAPI:
     app.include_router(borrower_router, prefix="/api/v1")
     app.include_router(admin_router, prefix="/api/v1")
     app.include_router(integrations_router, prefix="/api/v1")
+    app.include_router(servicing_router, prefix="/api/v1")
+    app.include_router(compliance_router, prefix="/api/v1")
     app.include_router(underwriting_router, prefix="/api/v1")
+    app.include_router(agent_router, prefix="")
 
     # ── Direct Routes (outside router prefix) ──
 
